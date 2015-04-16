@@ -12,6 +12,8 @@
 #include <conio.h> // For getch()
 #include <string> // For string
 #include <vector>	// For vectors
+#include <sstream> // For string streams (advanced string handling)
+#include <ctime> // For date/time
 
 using namespace std;
 
@@ -76,30 +78,49 @@ struct ZombieItem {
 int main() {
 
 	// Function declarations (prototypes)
+	void createTitleScreen();
 	void initialiseGame(char grid[][SIZEX], Item& spot, vector<Item> &holes, vector<Item> &powerpills, vector<ZombieItem> &zombies);
 	bool wantToQuit(int k);
+	bool wantToFreeze(int k);
+	bool wantToExterminate(int key);
+	bool wantToEat(int key);
 	bool isArrowKey(int k);
 	int getKeyPress();
-	void updateGame(char g[][SIZEX], Item& sp, int k, string& mess, vector<Item> &holes, vector<Item> &powerpills, vector<ZombieItem> &zombies, int &spotLives, int &pillsLeft, int &zombiesLeft);
+	void updateGame(char g[][SIZEX], Item& sp, int k, string& mess, vector<Item> &holes, vector<Item> &powerpills, vector<ZombieItem> &zombies, int &spotLives, int &pillsLeft, int &zombiesLeft, bool Freeze);
 	void renderGame(const char g[][SIZEX], string mess, int spotLives, int zombiesLeft, int pillsLeft);
 	void endProgram(string quitMessage);
 	void createHoles(char gr[][SIZEX], vector<Item> &holes);
+	void exterminateAllZombies(vector<ZombieItem> &zombies, bool Exterminate, char gr[][SIZEX]);
+	void eatAllPills(vector<Item> &pills, char gr[][SIZEX]);
 
 	// Local variable declarations 
 	int spotLives = 5;
 	int pillsLeft = 8;
 	int zombiesLeft = 4;
 
+	bool Freeze, Exterminate, Eat;
+	Freeze = Exterminate = Eat = false;
+
 	char grid[SIZEY][SIZEX]; // Grid for display
 
 	Item spot = { SPOT }; // Spot's symbol and position (0, 0) 
 	spot.render = true;
 
-	string message("LET'S START... "); // Current message to player
-
 	vector<Item> holes;
 	vector<Item> powerpills;
 	vector<ZombieItem> zombies;
+
+	string playername = "";
+
+	createTitleScreen();
+
+	while (playername == "") {
+
+
+
+	}
+
+	string message("LET'S START... "); // Current message to player
 
 	initialiseGame(grid, spot, holes, powerpills, zombies); // Initialise grid (incl. walls and spot)
 
@@ -114,14 +135,34 @@ int main() {
 		key = getKeyPress(); // Read in next keyboard event
 
 		if (isArrowKey(key))
-			updateGame(grid, spot, key, message, holes, powerpills, zombies, spotLives, pillsLeft, zombiesLeft);
-		else
+			updateGame(grid, spot, key, message, holes, powerpills, zombies, spotLives, pillsLeft, zombiesLeft, Freeze);
+		else if (wantToFreeze(key))
+			Freeze = !Freeze;
+		else if (wantToEat(key)) {
+			Eat = !Eat;
+			if (Eat) {
+				eatAllPills(powerpills, grid);
+				spotLives += pillsLeft;
+				pillsLeft = 0;
+			}
+		} else if (wantToExterminate(key)) {
+			Exterminate = !Exterminate;
+			zombiesLeft = Exterminate == true ? 0 : 4;
+			exterminateAllZombies(zombies, Exterminate, grid);
+		} else
 			message = "INVALID KEY! "; // Set 'Invalid key' message
 
 	} while (!wantToQuit(key) && spotLives > 0 && !(zombiesLeft == 0 && pillsLeft == 0)); // While user does not want to quit
 	
 	if (spotLives > 0) {
 		if (zombiesLeft == 0 && pillsLeft == 0) {
+
+			string endMessage;	// Final string to pass to endProgram
+			ostringstream convert;	// streams used for the conversion of int to string
+			convert << spotLives;	// puts textual representation of spotLivesi nto stream
+			endMessage = convert.str();	// sets endMessage to conents of stream
+			endMessage = "PLAYER WINS WITH: " + endMessage + " LIVES REMAINING"; // formats endMessage
+			endProgram(endMessage);
 			// TODO : Display how many lives left
 		} else
 			endProgram("PLAYER QUITS! "); // Display final message
@@ -145,14 +186,14 @@ int main() {
 // Updates the zombies locations
 // Updates the rest of the grid
 //---------------------------------------------------------------------------
-void updateGame(char grid[][SIZEX], Item& spot, int key, string& message, vector<Item> &holes, vector<Item> &powerpills, vector<ZombieItem> &zombies, int &spotLives, int &pillsLeft, int &zombiesLeft) {
+void updateGame(char grid[][SIZEX], Item& spot, int key, string& message, vector<Item> &holes, vector<Item> &powerpills, vector<ZombieItem> &zombies, int &spotLives, int &pillsLeft, int &zombiesLeft, bool Freeze) {
 
 	void updateSpotCoordinates(const char g[][SIZEX], Item& spot, int key, string& mess, int &spotLives, vector<Item> &powerpills, int &pillsLeft);
-	void updateZombieCoordinates(const char g[][SIZEX], vector<ZombieItem> &zombies, Item& sp, int &spotLives, int &zombiesLeft);
+	void updateZombieCoordinates(const char g[][SIZEX], vector<ZombieItem> &zombies, Item& sp, int &spotLives, int &zombiesLeft, bool Freeze);
 	void updateGrid(char g[][SIZEX], Item spot, vector<Item> &holes, vector<Item> &powerpills, vector<ZombieItem> &zombies);
 
 	updateSpotCoordinates(grid, spot, key, message, spotLives, powerpills, pillsLeft); // Update spot coordinates
-	updateZombieCoordinates(grid, zombies, spot, spotLives, zombiesLeft); // Update all zombie coordinates
+	updateZombieCoordinates(grid, zombies, spot, spotLives, zombiesLeft, Freeze); // Update all zombie coordinates
 
 	// According to key
 
@@ -401,6 +442,44 @@ void placeZombies(char gr[][SIZEX], vector<ZombieItem> &zombies) {
 } // End of placeZombies
 
 //---------------------------------------------------------------------------
+// Start of eatAllPills
+//
+// Removes all pills from the game
+//---------------------------------------------------------------------------
+void eatAllPills(vector<Item> &pills, char gr[][SIZEX]) {
+
+	for (int i = 0; i < 8; i++) {
+
+		if (pills.at(i).render != 0)	{
+			pills.at(i).render = 0; 
+			gr[pills.at(i).y][pills.at(i).x] = TUNNEL;
+		}
+
+	}
+
+} // End of eatAllPills
+
+//---------------------------------------------------------------------------
+// Start of exterminateAllZombies
+//
+// Kills all remaining zombies
+//---------------------------------------------------------------------------
+void exterminateAllZombies(vector<ZombieItem> &zombies, bool Exterminate, char gr[][SIZEX]) {
+
+	for (int i = 0; i < 4; i++) {
+
+		int render = Exterminate == false ? 1 : 0;
+
+		if (zombies.at(i).render != render)	{ // Check to see if the zombie is alive/dead
+			zombies.at(i).render = render; // Set the zombie to be dead/alive
+			gr[zombies.at(i).y][zombies.at(i).x] = Exterminate == true ? TUNNEL : ZOMBIE;
+		}
+
+	}
+
+} // End of exterminateAllZombies
+
+//---------------------------------------------------------------------------
 // Start of createZombies
 //
 // Creates the zombies & places them into the vector
@@ -505,7 +584,7 @@ bool getGridClearAt(char grid[][SIZEX], int x, int y) {
 //
 // Updates the zombies locations
 //---------------------------------------------------------------------------
-void updateZombieCoordinates(const char g[][SIZEX], vector<ZombieItem> &zombies, Item& sp, int &spotLives, int &zombiesLeft) {
+void updateZombieCoordinates(const char g[][SIZEX], vector<ZombieItem> &zombies, Item& sp, int &spotLives, int &zombiesLeft, bool Freeze) {
 
 	void checkColide(const char g[][SIZEX], vector<ZombieItem> &zombies, Item& sp, int &spotLives);
 
@@ -513,6 +592,9 @@ void updateZombieCoordinates(const char g[][SIZEX], vector<ZombieItem> &zombies,
 	int spotY = sp.y;
 
 	for (int i = 0; i < 4; i++) {
+
+		if (Freeze)
+			break;
 
 		ZombieItem zombie = zombies.at(i);
 
@@ -556,6 +638,9 @@ void updateZombieCoordinates(const char g[][SIZEX], vector<ZombieItem> &zombies,
 
 				zombies.at(i).render = 0;
 				zombiesLeft--;
+
+				zombies.at(i).y = zombie.orginaly;
+				zombies.at(i).x = zombie.orginalx;
 
 				break;
 
@@ -797,7 +882,32 @@ bool wantToQuit(int key) {
 	return (key == QUIT);
 } // End of wantToQuit
 
+//---------------------------------------------------------------------------
+// Start of wantToFreeze
+//
+// Check if the key pressed is 'F'
+//---------------------------------------------------------------------------
+bool wantToFreeze(int key) {
+	return (key == 'f' || key == 'F');
+} // End of wantToFreeze
 
+//---------------------------------------------------------------------------
+// Start of wantToExterminate
+//
+// Check if the key pressed is 'X'
+//---------------------------------------------------------------------------
+bool wantToExterminate(int key) {
+	return (key == 'x' || key == 'X');
+} // End of wantToExterminate
+
+//---------------------------------------------------------------------------
+// Start of wantToEat
+//
+// Check if the key pressed is 'E'
+//---------------------------------------------------------------------------
+bool wantToEat(int key) {
+	return (key == 'e' || key == 'E');
+} // End of wantToEat
 
 //---------------------------------------------------------------------------
 // Start of clearMessage
@@ -972,3 +1082,59 @@ void endProgram(string quitMessage) {
 	system("pause");
 
 } // End of endProgram
+
+void createTitleScreen() {
+
+	void createTime();
+	createTime();
+
+	Gotoxy(10, 5);
+	SelectBackColour(clWhite);
+	SelectTextColour(clRed);
+
+	cout << "--------------------";
+	Gotoxy(10, 6);
+	cout << ": SPOT AND ZOMBIES :";
+	Gotoxy(10, 7);
+	cout << "--------------------";
+
+	Gotoxy(10, 12);
+	cout << "GROUP 1RR ";
+
+	Gotoxy(10, 13);
+	cout << "Hamish Mackay     : b4014566";
+
+	Gotoxy(10, 14);
+	cout << "James Kirk        : b4012447";
+
+	Gotoxy(10, 15);
+	cout << "Robert Jefferies  : b4016187";
+
+}
+
+void createTime() {
+
+	time_t currentTime;
+	struct tm *localTime;
+
+	time(&currentTime);                   // Get the current time
+	localTime = localtime(&currentTime);  // Convert the current time to the local time
+
+	int Day = localTime->tm_mday;
+	int Month = localTime->tm_mon + 1;
+	int Year = localTime->tm_year + 1900;
+	int Hour = localTime->tm_hour;
+	int Min = localTime->tm_min;
+	int Sec = localTime->tm_sec;
+
+	Gotoxy(50, 5);
+	SelectBackColour(clWhite);
+	SelectTextColour(clBlack);
+
+	cout << "DATE: " << Day << "/" << Month << "/" << Year;
+
+	Gotoxy(50, 6);
+
+	cout << "TIME: " << Hour << ":" << Min << ":" << Sec;
+
+}
