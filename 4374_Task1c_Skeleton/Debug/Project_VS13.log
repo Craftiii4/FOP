@@ -1,20 +1,22 @@
-﻿Build started 24/03/2015 18:59:33.
-     1>Project "A:\Downloads\4374_Task1c_Skeleton (1)\4374_Task1c_Skeleton (1)\Project_VS13.vcxproj" on node 2 (Build target(s)).
+﻿Build started 20/04/2015 17:50:04.
+     1>Project "A:\Saved Files\Documents\GitHub\FOP\4374_Task1c_Skeleton\Project_VS13.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          A:\Programs\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl- /Od /Oy- /D _MBCS /D _MBCS /D NODEBUG /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /GR /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt 4374_Task1c_Skeleton.cpp
          4374_Task1c_Skeleton.cpp
-     1>a:\downloads\4374_task1c_skeleton (1)\4374_task1c_skeleton (1)\4374_task1c_skeleton.cpp(770): warning C4996: 'getch': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _getch. See online help for details.
+     1>a:\saved files\documents\github\fop\4374_task1c_skeleton\4374_task1c_skeleton.cpp(952): warning C4996: 'getch': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _getch. See online help for details.
                  a:\programs\microsoft visual studio 12.0\vc\include\conio.h(131) : see declaration of 'getch'
-     1>a:\downloads\4374_task1c_skeleton (1)\4374_task1c_skeleton (1)\4374_task1c_skeleton.cpp(773): warning C4996: 'getch': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _getch. See online help for details.
+     1>a:\saved files\documents\github\fop\4374_task1c_skeleton\4374_task1c_skeleton.cpp(955): warning C4996: 'getch': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _getch. See online help for details.
                  a:\programs\microsoft visual studio 12.0\vc\include\conio.h(131) : see declaration of 'getch'
+     1>a:\saved files\documents\github\fop\4374_task1c_skeleton\4374_task1c_skeleton.cpp(1327): warning C4996: 'localtime': This function or variable may be unsafe. Consider using localtime_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 a:\programs\microsoft visual studio 12.0\vc\include\time.inl(112) : see declaration of 'localtime'
        Link:
-         A:\Programs\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"A:\Downloads\4374_Task1c_Skeleton (1)\4374_Task1c_Skeleton (1)\Debug\Project_VS13.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"A:\Downloads\4374_Task1c_Skeleton (1)\4374_Task1c_Skeleton (1)\Debug\Project_VS13.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"A:\Downloads\4374_Task1c_Skeleton (1)\4374_Task1c_Skeleton (1)\Debug\Project_VS13.lib" /MACHINE:X86 Debug\4374_Task1c_Skeleton.obj
+         A:\Programs\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"A:\Saved Files\Documents\GitHub\FOP\4374_Task1c_Skeleton\Debug\Project_VS13.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"A:\Saved Files\Documents\GitHub\FOP\4374_Task1c_Skeleton\Debug\Project_VS13.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"A:\Saved Files\Documents\GitHub\FOP\4374_Task1c_Skeleton\Debug\Project_VS13.lib" /MACHINE:X86 Debug\4374_Task1c_Skeleton.obj
          Debug\ConsoleUtils.obj
          Debug\RandomUtils.obj
          Debug\TimeUtils.obj
-         Project_VS13.vcxproj -> A:\Downloads\4374_Task1c_Skeleton (1)\4374_Task1c_Skeleton (1)\Debug\Project_VS13.exe
-     1>Done Building Project "A:\Downloads\4374_Task1c_Skeleton (1)\4374_Task1c_Skeleton (1)\Project_VS13.vcxproj" (Build target(s)).
+         Project_VS13.vcxproj -> A:\Saved Files\Documents\GitHub\FOP\4374_Task1c_Skeleton\Debug\Project_VS13.exe
+     1>Done Building Project "A:\Saved Files\Documents\GitHub\FOP\4374_Task1c_Skeleton\Project_VS13.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:01.57
+Time Elapsed 00:00:02.00

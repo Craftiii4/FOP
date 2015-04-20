@@ -14,7 +14,7 @@
 #include <vector>	// For vectors
 #include <sstream> // For string streams (advanced string handling)
 #include <ctime> // For date/time
-
+#include <fstream>
 using namespace std;
 
 // Include our own libraries
@@ -48,6 +48,8 @@ const int LEFT(75); // Left arrow
 
 // Defining the other command letters
 const char QUIT('Q'); // End the game
+const char PLAY('P'); // Play the game
+const char INFORMATION('I'); // Open help menu
 
 // Data structure to store data for a grid item
 
@@ -78,25 +80,29 @@ struct ZombieItem {
 int main() {
 
 	// Function declarations (prototypes)
-	void createTitleScreen();
+	void createTitleScreen(bool showhelp);
 	void initialiseGame(char grid[][SIZEX], Item& spot, vector<Item> &holes, vector<Item> &powerpills, vector<ZombieItem> &zombies);
 	bool wantToQuit(int k);
+	bool wantToPlay(int k);
+	bool wantToOpenInformation(int k);
 	bool wantToFreeze(int k);
 	bool wantToExterminate(int key);
 	bool wantToEat(int key);
 	bool isArrowKey(int k);
 	int getKeyPress();
 	void updateGame(char g[][SIZEX], Item& sp, int k, string& mess, vector<Item> &holes, vector<Item> &powerpills, vector<ZombieItem> &zombies, int &spotLives, int &pillsLeft, int &zombiesLeft, bool Freeze);
-	void renderGame(const char g[][SIZEX], string mess, int spotLives, int zombiesLeft, int pillsLeft);
+	void renderGame(const char g[][SIZEX], string mess, int spotLives, int zombiesLeft, int pillsLeft, string name, int oldhighscore);
 	void endProgram(string quitMessage);
-	void createHoles(char gr[][SIZEX], vector<Item> &holes);
 	void exterminateAllZombies(vector<ZombieItem> &zombies, bool Exterminate, char gr[][SIZEX]);
 	void eatAllPills(vector<Item> &pills, char gr[][SIZEX]);
-
+	void printInfo();
+	string getPlayerName();
+	void clearScreen();
 	// Local variable declarations 
 	int spotLives = 5;
 	int pillsLeft = 8;
 	int zombiesLeft = 4;
+
 
 	bool Freeze, Exterminate, Eat;
 	Freeze = Exterminate = Eat = false;
@@ -110,13 +116,78 @@ int main() {
 	vector<Item> powerpills;
 	vector<ZombieItem> zombies;
 
-	string playername = "";
+	int key(' '); // Create key to store keyboard events
 
-	createTitleScreen();
+	string playername = ""; // Holds the players name
 
-	while (playername == "") {
+	int oldhighscore; // Holds the last high score of the player
 
+	bool exitmenu = false; // Holds if the menu should be exited or not
 
+	while (!exitmenu) {
+
+		clearScreen(); // Clear the screen
+		createTitleScreen(true); // Display the title screen with help
+
+		SelectBackColour(clBlack);
+		SelectTextColour(clWhite);
+
+		key = getKeyPress();
+
+		while (!wantToPlay(key) && !wantToOpenInformation(key) && !wantToQuit(key)) {
+			
+			// Display invalid key if the key was not an I, P or Q (or lower case of each)
+
+			Gotoxy(50, 20);
+			cout << "INVALID KEY!   ";
+
+			key = getKeyPress(); // Keep listening until the player enters a valid key
+
+		}
+
+		if (wantToQuit(key)) { // Determine if the quit key was inputted
+			// Quit the game
+			endProgram("PLAYER QUITS!   ");
+			return 0;
+		}
+		else if (wantToOpenInformation(key)) { // Determin if the information key was inputted
+
+			clearScreen(); // Clear screen
+			printInfo(); // Display game info screen
+
+			while (key != 13) // Exit enter screen when the enter key (ASCII value 13) is inputted
+				key = getKeyPress();
+
+		} else {
+
+			// If neither quit or information key, then the play key was inputted
+
+			ifstream name;
+
+			SelectBackColour(clBlack);
+			clearScreen(); // Clear the screen
+
+			playername = getPlayerName(); // Ask the player for their name
+
+			name.open(playername + ".src", ios::in); // Open up the score file for this name
+
+			if (name.fail()) { // Check to see if this failed (if it exists)
+
+				ofstream newName;
+				newName.open(playername + ".src", ios::out); // Create the file
+				newName << -1; // Print -1 to the file
+				oldhighscore = -1; // Set the old high score to -1 as they have never played before
+
+			} else { // Else the file exists
+				name >> oldhighscore; // Load the score saved in their score file
+			}
+
+			SelectBackColour(clBlack);
+			clearScreen();
+
+			exitmenu = true; // Exit the menu and start the game
+
+		}
 
 	}
 
@@ -124,54 +195,80 @@ int main() {
 
 	initialiseGame(grid, spot, holes, powerpills, zombies); // Initialise grid (incl. walls and spot)
 
-	int key(' '); // Create key to store keyboard events
-
 	do {
 
-		renderGame(grid, message, spotLives, zombiesLeft, pillsLeft); // Render game state on screen
+		renderGame(grid, message, spotLives, zombiesLeft, pillsLeft, playername, oldhighscore); // Render game state on screen
 
 		message = "                                     ";
 
 		key = getKeyPress(); // Read in next keyboard event
-
-		if (isArrowKey(key))
+		
+		if (isArrowKey(key)) // Check if an arrow key was pressed
 			updateGame(grid, spot, key, message, holes, powerpills, zombies, spotLives, pillsLeft, zombiesLeft, Freeze);
-		else if (wantToFreeze(key))
-			Freeze = !Freeze;
-		else if (wantToEat(key)) {
-			Eat = !Eat;
-			if (Eat) {
-				eatAllPills(powerpills, grid);
-				spotLives += pillsLeft;
-				pillsLeft = 0;
+		else if (wantToFreeze(key)) // Check if the cheat key freeze was pressed
+			Freeze = !Freeze; // Toggle the value of freeze
+		else if (wantToEat(key)) { // Check if the cheat key eat was pressed
+			Eat = !Eat; // Togle the value of eat
+
+			if (Eat) { // If eat is now true
+				eatAllPills(powerpills, grid); // Remove all power pills from the grid
+				spotLives += pillsLeft; // Increase spot lives by this amount
+				pillsLeft = 0; // Set remaining pills to 0
 			}
-		} else if (wantToExterminate(key)) {
-			Exterminate = !Exterminate;
-			zombiesLeft = Exterminate == true ? 0 : 4;
-			exterminateAllZombies(zombies, Exterminate, grid);
+
+		} else if (wantToExterminate(key)) { // Check if the cheat key exterminate was pressed
+
+			Exterminate = !Exterminate; // Toggle the value of exterminate
+			zombiesLeft = Exterminate == true ? 0 : 4; // Set the amount of zombies left to 0 if Exterminate is true & 4 if Exterminate is false
+
+			exterminateAllZombies(zombies, Exterminate, grid); // Either place back or remove all the zombies from the grid depending on the value of Exterminate
+
 		} else
 			message = "INVALID KEY! "; // Set 'Invalid key' message
 
-	} while (!wantToQuit(key) && spotLives > 0 && !(zombiesLeft == 0 && pillsLeft == 0)); // While user does not want to quit
-	
-	if (spotLives > 0) {
-		if (zombiesLeft == 0 && pillsLeft == 0) {
+	} while (!wantToQuit(key) && spotLives > 0 && !(zombiesLeft == 0 && pillsLeft == 0)); // While user does not want to quit & the win/lose conditions are not met
+
+	if (spotLives > 0) { // Check if the player has any lifes left (check if they lost)
+
+		if (zombiesLeft == 0 && pillsLeft == 0) { // Check if the player has won the game
+
+			if (spotLives > oldhighscore) { // Update the score saved in file only if the current score is greater than the old high score
+
+				ofstream score;
+				score.open(playername + ".src", ios::out);
+				score << spotLives; // Set to the new high score
+
+			}
 
 			string endMessage;	// Final string to pass to endProgram
 			ostringstream convert;	// streams used for the conversion of int to string
 			convert << spotLives;	// puts textual representation of spotLivesi nto stream
+
 			endMessage = convert.str();	// sets endMessage to conents of stream
+			clearScreen(); // Clear the screen
+			createTitleScreen(false); // Create the title screen again, without showing the help
 			endMessage = "PLAYER WINS WITH: " + endMessage + " LIVES REMAINING"; // formats endMessage
-			endProgram(endMessage);
-			// TODO : Display how many lives left
-		} else
+			endProgram(endMessage); // Display the end game message
+
+		} else {
+			clearScreen(); // Clear the screen
+			createTitleScreen(false); // Create the title screen again, without showing the help
 			endProgram("PLAYER QUITS! "); // Display final message
+		}
+
 	} else {
 
-		void displayGameInfo(int spotLives, int zombies, int pills);
-		displayGameInfo(spotLives, zombiesLeft, pillsLeft);
+		if (spotLives > oldhighscore) { // Update the score saved in file only if the current score is greater than the old high score
 
-		endProgram("YOU LOST!");
+			ofstream score;
+			score.open(playername + ".src", ios::out);
+			score << spotLives; // Set to the new high score
+
+		}
+
+		clearScreen(); // Clear the screen
+		createTitleScreen(false); // Create the title screen again, without showing the help
+		endProgram("YOU LOST!"); // Display the end game message
 
 	}
 
@@ -350,10 +447,10 @@ void createHoles(char gr[][SIZEX], vector<Item> &holes) {
 //---------------------------------------------------------------------------
 void placePills(char gr[][SIZEX], vector<Item> &powerpills) {
 
-	for (Item pill : powerpills) {
+	for (Item pill : powerpills) { // Go through every pill
 
-		if (pill.render != 0)
-			gr[pill.y][pill.x] = pill.symbol;
+		if (pill.render != 0) // Check if we should render this pill
+			gr[pill.y][pill.x] = pill.symbol; // If render is not false(0) then place it into the grid
 
 	}
 
@@ -366,9 +463,9 @@ void placePills(char gr[][SIZEX], vector<Item> &powerpills) {
 //---------------------------------------------------------------------------
 void deletePillAt(vector<Item> &powerpills, int x, int y) {
 
-	for (int i = 0; i < 8; i++)
-		if (powerpills.at(i).x == x && powerpills.at(i).y == y)
-			powerpills.at(i).render = 0;
+	for (int i = 0; i < 8; i++) // Go through all the pills
+		if (powerpills.at(i).x == x && powerpills.at(i).y == y) // Check if the X/Y of this pill match the passed in X/Y
+			powerpills.at(i).render = 0; // Set the render to false(0) if they match, this will stop the pill appearing on the grid
 
 } // End of deletePillAt
 
@@ -379,12 +476,12 @@ void deletePillAt(vector<Item> &powerpills, int x, int y) {
 //---------------------------------------------------------------------------
 bool isThereAPillAt(vector<Item> &powerpills, int x, int y) {
 
-	for (int i = 0; i < 8; i++)
-		if (powerpills.at(i).x == x && powerpills.at(i).y == y)
-			if (powerpills.at(i).render != 0)
-				return true;
+	for (int i = 0; i < 8; i++) // Go through all the pills
+		if (powerpills.at(i).x == x && powerpills.at(i).y == y) // Check if the X/Y of this pill match the passed in X/Y
+			if (powerpills.at(i).render != 0) // Check if this pill is being rendered
+				return true; // Return true, there is a pill there
 
-	return false;
+	return false; // Return false, there is not a pull there
 
 } // End of deletePillAt
 
@@ -406,18 +503,18 @@ void createPills(char gr[][SIZEX], vector<Item> &powerpills) {
 
 		int x = Random(SIZEX - 2); //horizontal coordinate in range [1..(SIZEX - 2)]
 
-		if (getGridClearAt(gr, x, y)) {
+		if (getGridClearAt(gr, x, y)) { // Ensure the grid is clear
 
 			Item pill = { PILL };
 
 			pill.x = x;
 			pill.y = y;
 
-			pill.render = 1;
+			pill.render = 1; // Set the render to true
 
-			powerpills.push_back(pill);
+			powerpills.push_back(pill); // Add the pill to the vector
 
-			pillon++;
+			pillon++; // Increase the pillson by 1, this ensures that 8 pills are always placed by forcing an empty space to be found
 
 		} // Else gird is not a tunnel at cords
 
@@ -448,11 +545,11 @@ void placeZombies(char gr[][SIZEX], vector<ZombieItem> &zombies) {
 //---------------------------------------------------------------------------
 void eatAllPills(vector<Item> &pills, char gr[][SIZEX]) {
 
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < 8; i++) { // Go through every pill
 
-		if (pills.at(i).render != 0)	{
-			pills.at(i).render = 0; 
-			gr[pills.at(i).y][pills.at(i).x] = TUNNEL;
+		if (pills.at(i).render != 0) { // Check if the pill is being rendered 
+			pills.at(i).render = 0; // Set the pill to not being rendered
+			gr[pills.at(i).y][pills.at(i).x] = TUNNEL; // Set the current place of the pill to a tunnel on the grid
 		}
 
 	}
@@ -466,13 +563,13 @@ void eatAllPills(vector<Item> &pills, char gr[][SIZEX]) {
 //---------------------------------------------------------------------------
 void exterminateAllZombies(vector<ZombieItem> &zombies, bool Exterminate, char gr[][SIZEX]) {
 
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) { // Go through every zombie
 
-		int render = Exterminate == false ? 1 : 0;
+		int render = Exterminate == false ? 1 : 0; // Set render to 1 if Exterminate is false, else set render to 1
 
 		if (zombies.at(i).render != render)	{ // Check to see if the zombie is alive/dead
 			zombies.at(i).render = render; // Set the zombie to be dead/alive
-			gr[zombies.at(i).y][zombies.at(i).x] = Exterminate == true ? TUNNEL : ZOMBIE;
+			gr[zombies.at(i).y][zombies.at(i).x] = Exterminate == true ? TUNNEL : ZOMBIE; // Place a tunnel if Exterminate is true, else place a zombie
 		}
 
 	}
@@ -496,7 +593,7 @@ void createZombies(char gr[][SIZEX], vector<ZombieItem> &zombies) {
 		zombie.orginalx = zombie.x;
 		zombie.orginaly = zombie.y;
 
-		zombies.push_back(zombie);
+		zombies.push_back(zombie); // Add to vector
 	}
 
 	{ // Create Zombie 2 (top right corner)
@@ -509,7 +606,7 @@ void createZombies(char gr[][SIZEX], vector<ZombieItem> &zombies) {
 		zombie.orginalx = zombie.x;
 		zombie.orginaly = zombie.y;
 
-		zombies.push_back(zombie);
+		zombies.push_back(zombie); // Add to vector
 	}
 
 	{ // Create Zombie 3 (bottom left corner)
@@ -522,7 +619,7 @@ void createZombies(char gr[][SIZEX], vector<ZombieItem> &zombies) {
 		zombie.orginalx = zombie.x;
 		zombie.orginaly = zombie.y;
 
-		zombies.push_back(zombie);
+		zombies.push_back(zombie); // Add to vector
 	}
 
 	{ // Create Zombie 4 (bottom right corner)
@@ -535,7 +632,7 @@ void createZombies(char gr[][SIZEX], vector<ZombieItem> &zombies) {
 		zombie.orginalx = zombie.x;
 		zombie.orginaly = zombie.y;
 
-		zombies.push_back(zombie);
+		zombies.push_back(zombie); // Add to vector
 	}
 
 } // End of createZombies
@@ -563,19 +660,16 @@ void updateGrid(char grid[][SIZEX], Item spot, vector<Item> &holes, vector<Item>
 } // End of updateGrid
 
 //---------------------------------------------------------------------------
-// Start of updateGrid
+// Start of getGridClearAt
 //
 // Gets if there is a tunnel at a certain coordinate on the grid
 //---------------------------------------------------------------------------
 bool getGridClearAt(char grid[][SIZEX], int x, int y) {
 
-	Gotoxy(0, 30);
-	cout << grid[y][x];
+	if (grid[y][x] == TUNNEL) // Check if a tunnel is found at these X/Y
+		return true; // return true if there is a tunnel here
 
-	if (grid[y][x] == TUNNEL)
-		return true;
-
-	return false;
+	return false; // return false if there is not a tunnel here
 
 } // End of getGridClearAt
 
@@ -593,8 +687,8 @@ void updateZombieCoordinates(const char g[][SIZEX], vector<ZombieItem> &zombies,
 
 	for (int i = 0; i < 4; i++) {
 
-		if (Freeze)
-			break;
+		if (Freeze) // Check if freeze is true
+			break; // Stop here as zombies are currently frozen
 
 		ZombieItem zombie = zombies.at(i);
 
@@ -848,7 +942,7 @@ void setKeyDirection(int key, int& dx, int& dy) {
 } // End of setKeyDirection
 
 //---------------------------------------------------------------------------
-// Start of setKeyDirection
+// Start of getKeyPress
 //
 // Get key or command selected by user
 //---------------------------------------------------------------------------
@@ -876,11 +970,29 @@ bool isArrowKey(int key) {
 //---------------------------------------------------------------------------
 // Start of wantToQuit
 //
-// Check if the key pressed is 'Q'
+// Check if the key pressed is 'Q' or 'q'
 //---------------------------------------------------------------------------
 bool wantToQuit(int key) { 
-	return (key == QUIT);
+	return (key == QUIT || key == tolower(QUIT));
 } // End of wantToQuit
+
+//---------------------------------------------------------------------------
+// Start of wantToPlay
+//
+// Check if the key pressed is 'P' or 'p'
+//---------------------------------------------------------------------------
+bool wantToPlay(int key) {
+	return (key == PLAY || key == tolower(PLAY));
+} // End of wantToPlay
+
+//---------------------------------------------------------------------------
+// Start of wantToOpenInformation
+//
+// Check if the key pressed is 'I' or 'i'
+//---------------------------------------------------------------------------
+bool wantToOpenInformation(int key) {
+	return (key == INFORMATION || key == tolower(INFORMATION));
+} // End of wantToOpenInformation
 
 //---------------------------------------------------------------------------
 // Start of wantToFreeze
@@ -932,13 +1044,13 @@ void clearMessage() {
 //
 // Display game title, messages, maze, spot and apples on screen
 //---------------------------------------------------------------------------
-void renderGame(const char gd[][SIZEX], string mess, int spotLives, int zombies, int pills) { 
+void renderGame(const char gd[][SIZEX], string mess, int spotLives, int zombies, int pills, string name, int oldhighscore) {
 
 	void paintGrid(const char g[][SIZEX]);
 	void showTitle();
 	void showOptions();
 	void showMessage(string);
-	void displayGameInfo(int spotLives, int zombies, int pills);
+	void displayGameInfo(int spotLives, int zombies, int pills, string name, int oldhighscore);
 
 	Gotoxy(0, 0);
 
@@ -952,7 +1064,7 @@ void renderGame(const char gd[][SIZEX], string mess, int spotLives, int zombies,
 	showOptions();
 
 	// Display game info
-	displayGameInfo(spotLives, zombies, pills);
+	displayGameInfo(spotLives, zombies, pills, name, oldhighscore);
 
 	// Display message if any
 	showMessage(mess);
@@ -967,7 +1079,6 @@ void renderGame(const char gd[][SIZEX], string mess, int spotLives, int zombies,
 void paintGrid(const char g[][SIZEX]) { 
 
 	SelectBackColour(clBlack);
-
 	SelectTextColour(clWhite);
 
 	Gotoxy(0, 2);
@@ -987,17 +1098,18 @@ void paintGrid(const char g[][SIZEX]) {
 // Display game title
 //---------------------------------------------------------------------------
 void showTitle() { 
-
+	void createTime(int x, int y);
 	SelectTextColour(clYellow);
 
 	Gotoxy(0, 0);
-	cout << "___ZOMBIES GAME SKELETON___\n" << endl;
+	cout << " ZOMBIES GAME BASIC VERSION \n" << endl;
 
 	SelectBackColour(clWhite);
 	SelectTextColour(clRed);
 
-	Gotoxy(40, 0);
-	cout << "Pascale Vacher: March 15";
+	//Gotoxy(40, 0);
+	//cout << "Pascale Vacher: March 15";
+	createTime(40, 1);
 
 } // End of showTitle
 
@@ -1024,7 +1136,7 @@ void showOptions() {
 //
 // Display game stats, remaining lives, zombies and pills
 //---------------------------------------------------------------------------
-void displayGameInfo(int spotLives, int zombies, int pills) {
+void displayGameInfo(int spotLives, int zombies, int pills, string name, int oldhighscore) {
 
 	SelectBackColour(clBlack);
 
@@ -1038,6 +1150,17 @@ void displayGameInfo(int spotLives, int zombies, int pills) {
 
 	Gotoxy(40, 12);
 	cout << "REMAINING PILLS: " << pills;
+
+	Gotoxy(40, 17);
+	cout << "PLAYER'S NAME: ";
+	SelectTextColour(clYellow);
+	cout << name;
+
+	Gotoxy(40, 18);
+	SelectTextColour(clWhite);
+	cout << "PLAYER'S HIGH SCORE: ";
+	SelectTextColour(clGreen);
+	cout << oldhighscore;
 
 } // End of displayGameInfo
 
@@ -1083,10 +1206,15 @@ void endProgram(string quitMessage) {
 
 } // End of endProgram
 
-void createTitleScreen() {
+//---------------------------------------------------------------------------
+// Start of createTitleScreen
+//
+// Display the title screen to the user
+//---------------------------------------------------------------------------
+void createTitleScreen(bool showhelp) {
 
-	void createTime();
-	createTime();
+	void createTime(int x, int y);
+	createTime(50, 5);
 
 	Gotoxy(10, 5);
 	SelectBackColour(clWhite);
@@ -1099,7 +1227,9 @@ void createTitleScreen() {
 	cout << "--------------------";
 
 	Gotoxy(10, 12);
-	cout << "GROUP 1RR ";
+	cout << "GROUP 1RR "; // Display group
+
+	// Display group members
 
 	Gotoxy(10, 13);
 	cout << "Hamish Mackay     : b4014566";
@@ -1110,9 +1240,85 @@ void createTitleScreen() {
 	Gotoxy(10, 15);
 	cout << "Robert Jefferies  : b4016187";
 
-}
+	if (showhelp) { // Check if we should display the help to the user
 
-void createTime() {
+		SelectBackColour(clBlack);
+		SelectTextColour(clYellow);
+
+		Gotoxy(50, 13);
+		cout << "START GAME: ";
+		SelectTextColour(clCyan); // Print the letter required in a different colour
+		cout << "P";
+
+		Gotoxy(50, 14);
+		SelectTextColour(clYellow);
+		cout << "HOW TO PLAY: ";
+		SelectTextColour(clCyan); // Print the letter required in a different colour
+		cout << "I";
+
+		Gotoxy(50, 16);
+		SelectTextColour(clRed);
+		cout << "QUIT: ";
+		SelectTextColour(clCyan); // Print the letter required in a different colour
+		cout << "Q";
+
+	}
+
+} // End of createTitleScreen
+
+//---------------------------------------------------------------------------
+// Start of getPlayerName
+//
+// Asks for and returns the name inputted by the user
+//---------------------------------------------------------------------------
+string getPlayerName() {
+
+	string name;
+
+	SelectBackColour(clBlack);
+	SelectTextColour(clWhite);
+
+	Gotoxy(10, 16);
+	cout << "Enter Your Name: ";
+
+	SelectTextColour(clYellow);
+	cin >> name;
+
+	while (name.length() > 20) { // Keep asking for a name if it's longer than 20 letters
+
+		Gotoxy(10, 18);
+		SelectTextColour(clRed);
+		cout << "Name too long (Should be 20 or letters or less)";
+
+		Gotoxy(10, 16);
+		cout << "                                                ";
+		Gotoxy(10, 16);
+		SelectTextColour(clWhite);
+		cout << "Enter Your Name: ";
+		SelectTextColour(clYellow);
+		cin >> name;
+
+	}
+
+	return name; // Return the players name
+
+} // End of getPlayerName
+
+//---------------------------------------------------------------------------
+// Start of clearScreen
+//
+// Clear everything currently on the screen
+//---------------------------------------------------------------------------
+void clearScreen() {
+	system("cls");
+} // End of clearScreen
+
+//---------------------------------------------------------------------------
+// Start of createTime
+//
+// Display the date & time at an passed in X/Y 
+//---------------------------------------------------------------------------
+void createTime(int x,int y) {
 
 	time_t currentTime;
 	struct tm *localTime;
@@ -1120,21 +1326,78 @@ void createTime() {
 	time(&currentTime);                   // Get the current time
 	localTime = localtime(&currentTime);  // Convert the current time to the local time
 
-	int Day = localTime->tm_mday;
-	int Month = localTime->tm_mon + 1;
-	int Year = localTime->tm_year + 1900;
-	int Hour = localTime->tm_hour;
+	int Day = localTime->tm_mday;		  // Get the current day of the month
+	int Month = localTime->tm_mon + 1;    // Get the curent month
+	int Year = localTime->tm_year + 1900; // Get the currnt year
+
+	// Get the current time
+	int Hour = localTime->tm_hour;		 
 	int Min = localTime->tm_min;
 	int Sec = localTime->tm_sec;
 
-	Gotoxy(50, 5);
+	Gotoxy(x, y);
 	SelectBackColour(clWhite);
 	SelectTextColour(clBlack);
+	
+	// Display the date, filling in single letter days/months with an extra 0 (e.g. 4 changes to 04)
+	cout << "DATE: " << setfill('0') << setw(2) << Day << "/" << setfill('0') << setw(2) << Month << "/" << Year;
 
-	cout << "DATE: " << Day << "/" << Month << "/" << Year;
+	Gotoxy(x, y+1);
 
-	Gotoxy(50, 6);
+	// Display the time, filling in single letter hours/min/secs with an extra 0 (e.g. 8 changes to 08)
+	cout << "TIME: " << setfill('0') << setw(2) << Hour << ":" << setfill('0') << setw(2) << Min << ":" << setfill('0') << setw(2) << Sec;
 
-	cout << "TIME: " << Hour << ":" << Min << ":" << Sec;
+} // End of createTime
 
-}
+//---------------------------------------------------------------------------
+// Start of printInfo
+//
+// Display game help screen to the user
+//---------------------------------------------------------------------------
+void printInfo() {
+
+	SelectBackColour(clBlack);
+	SelectTextColour(clGrey);
+
+	// Display basic info of the game
+
+	Gotoxy(5, 3);
+	cout << "SCORE CALCULATED BY AMOUNT OF LIVES LEFT AFTER ZOMBIES HAVE DIED."; 
+
+	Gotoxy(5, 4);
+	cout << "AVOID ZOMBIES(Z) AND HOLES(0). COLLECT PILLS(*) TO INCREASE LIVES.";
+
+	Gotoxy(5, 5);
+	cout << "ZOMBIES DIE WHEN THEY FALL DOWN HOLES (SO WILL YOU)";
+
+	SelectTextColour(clYellow);
+
+	// Display cheats
+
+	Gotoxy(5, 8);
+	cout << "CHEATS:";
+
+	Gotoxy(5, 9);
+	SelectTextColour(clCyan);
+	cout << "F";
+	SelectTextColour(clYellow); // Change the colour
+	cout << " TO FREEZE THE ZOMBIES";
+
+
+	Gotoxy(5, 10);
+	SelectTextColour(clRed);
+	cout << "X";
+	SelectTextColour(clYellow); // Change the colour
+	cout << " TO TOGGLE THE ZOMBIES";
+
+
+	Gotoxy(5, 11);
+	SelectTextColour(clGreen);
+	cout << "E";
+	SelectTextColour(clYellow); // Change the colour
+	cout << " TO EAT THE PILLS";
+
+	Gotoxy(5, 13);
+	cout << "Press Enter to return to the home screen";
+	
+} // End of printInfo
